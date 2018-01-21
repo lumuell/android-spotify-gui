@@ -1,39 +1,104 @@
 package com.mueru.simplespotify
 
+import android.app.Activity
 import android.os.Bundle
-import android.support.design.widget.Snackbar
-import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
+import android.R.attr.name
+import android.util.Log
+import android.R.attr.name
+import com.spotify.sdk.android.authentication.AuthenticationClient
+import java.util.*
+import com.spotify.sdk.android.authentication.AuthenticationResponse
+import com.spotify.sdk.android.authentication.AuthenticationRequest
+import com.spotify.sdk.android.authentication.LoginActivity.REQUEST_CODE
+import android.content.Intent
+import com.spotify.sdk.android.player.*
+import com.spotify.sdk.android.player.Spotify
 
-import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity() {
+
+
+private fun ClosedRange<Int>.random() =
+        Random().nextInt(endInclusive - start) +  start
+
+private val CLIENT_ID = "c1fbf1a9074543cfbc84eb7c8515413c"
+private val REDIRECT_URI = "simplespotify://callback"
+private val REQUEST_CODE = (0..Int.MAX_VALUE).random()
+
+class MainActivity : Activity(), Player.NotificationCallback, ConnectionStateCallback {
+
+    private lateinit var mPlayer: Player
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        setSupportActionBar(toolbar)
 
-        fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
+        val authRequestBuilder = AuthenticationRequest.Builder(
+                CLIENT_ID,
+                AuthenticationResponse.Type.TOKEN,
+                REDIRECT_URI)
+
+        authRequestBuilder.setScopes(arrayOf("user-read-private", "streaming"))
+        val request = authRequestBuilder.build()
+        AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent) {
+        super.onActivityResult(requestCode, resultCode, intent)
+
+        // Check if result comes from the correct activity
+        if (requestCode == REQUEST_CODE) {
+            val response = AuthenticationClient.getResponse(resultCode, intent)
+            if (response.type == AuthenticationResponse.Type.TOKEN) {
+                val playerConfig = Config(this, response.accessToken, CLIENT_ID)
+                Spotify.getPlayer(playerConfig, this, object : SpotifyPlayer.InitializationObserver {
+                    override fun onInitialized(spotifyPlayer: SpotifyPlayer) {
+                        mPlayer = spotifyPlayer
+                        mPlayer.addConnectionStateCallback(this@MainActivity)
+                        mPlayer.addNotificationCallback(this@MainActivity)
+                    }
+
+                    override fun onError(throwable: Throwable) {
+                        Log.e("MainActivity", "Could not initialize player: " + throwable.message)
+                    }
+                })
+            }
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
+    override fun onDestroy() {
+        Spotify.destroyPlayer(this)
+        super.onDestroy()
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when (item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
-        }
+    override fun onPlaybackError(error: Error) {
+        Log.d("MainActivity", "Playback error received: " + error.name)
+    }
+
+    override fun onPlaybackEvent(playerEvent: PlayerEvent) {
+        Log.d("MainActivity", "Playback event received: " + playerEvent.name)
+    }
+
+    override fun onLoggedOut() {
+        Log.d("MainActivity", "User logged out")
+    }
+
+    override fun onLoggedIn() {
+        Log.d("MainActivity", "User logged in")
+
+        mPlayer.playUri(null, "spotify:track:2TpxZ7JUBn3uw46aR7qd6V", 0, 0)
+    }
+
+    override fun onConnectionMessage(message: String) {
+        Log.d("MainActivity", "Received connection message: " + message)
+    }
+
+    override fun onLoginFailed(error: Error) {
+        Log.d("MainActivity", "Login failed received: " + error.name)
+    }
+
+    override fun onTemporaryError() {
+        Log.d("MainActivity", "Temporary error occurred");
     }
 }
