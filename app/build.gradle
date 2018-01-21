@@ -9,6 +9,7 @@ android {
     defaultConfig {
         applicationId "com.mueru.simplespotify"
         minSdkVersion 15
+        //noinspection OldTargetApi
         targetSdkVersion 26
         versionCode 1
         versionName "1.0"
