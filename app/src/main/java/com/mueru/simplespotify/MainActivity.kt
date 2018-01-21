@@ -4,19 +4,15 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import com.mueru.simplespotify.Settings.CLIENT_ID
+import com.mueru.simplespotify.Settings.REDIRECT_URI
+import com.mueru.simplespotify.Settings.REQUEST_CODE
 import com.spotify.sdk.android.authentication.AuthenticationClient
 import com.spotify.sdk.android.authentication.AuthenticationRequest
 import com.spotify.sdk.android.authentication.AuthenticationResponse
 import com.spotify.sdk.android.player.*
-import java.util.*
 
-
-private fun ClosedRange<Int>.random() =
-        Random().nextInt(endInclusive - start) +  start
-
-private const val CLIENT_ID = "c1fbf1a9074543cfbc84eb7c8515413c"
-private const val REDIRECT_URI = "simplespotify://callback"
-private val requestCode = (0..Int.MAX_VALUE).random()
+private val config = Settings.defaults().reify()
 
 class MainActivity : Activity(), Player.NotificationCallback, ConnectionStateCallback {
 
@@ -27,23 +23,23 @@ class MainActivity : Activity(), Player.NotificationCallback, ConnectionStateCal
         setContentView(R.layout.activity_main)
 
         val authRequestBuilder = AuthenticationRequest.Builder(
-                CLIENT_ID,
+                config[CLIENT_ID],
                 AuthenticationResponse.Type.TOKEN,
-                REDIRECT_URI)
+                config[REDIRECT_URI])
 
         authRequestBuilder.setScopes(arrayOf("user-read-private", "streaming"))
         val request = authRequestBuilder.build()
-        AuthenticationClient.openLoginActivity(this, requestCode, request)
+        AuthenticationClient.openLoginActivity(this, config[REQUEST_CODE], request)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent) {
         super.onActivityResult(requestCode, resultCode, intent)
 
         // Check if result comes from the correct activity
-        if (requestCode == com.mueru.simplespotify.requestCode) {
+        if (requestCode == config[REQUEST_CODE]) {
             val response = AuthenticationClient.getResponse(resultCode, intent)
             if (response.type == AuthenticationResponse.Type.TOKEN) {
-                val playerConfig = Config(this, response.accessToken, CLIENT_ID)
+                val playerConfig = Config(this, response.accessToken, config[CLIENT_ID])
                 Spotify.getPlayer(playerConfig, this, object : SpotifyPlayer.InitializationObserver {
                     override fun onInitialized(spotifyPlayer: SpotifyPlayer) {
                         mPlayer = spotifyPlayer
