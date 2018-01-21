@@ -1,30 +1,22 @@
 package com.mueru.simplespotify
 
 import android.app.Activity
-import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
-import android.R.attr.name
-import android.util.Log
-import android.R.attr.name
-import com.spotify.sdk.android.authentication.AuthenticationClient
-import java.util.*
-import com.spotify.sdk.android.authentication.AuthenticationResponse
-import com.spotify.sdk.android.authentication.AuthenticationRequest
-import com.spotify.sdk.android.authentication.LoginActivity.REQUEST_CODE
 import android.content.Intent
+import android.os.Bundle
+import android.util.Log
+import com.spotify.sdk.android.authentication.AuthenticationClient
+import com.spotify.sdk.android.authentication.AuthenticationRequest
+import com.spotify.sdk.android.authentication.AuthenticationResponse
 import com.spotify.sdk.android.player.*
-import com.spotify.sdk.android.player.Spotify
-
-
+import java.util.*
 
 
 private fun ClosedRange<Int>.random() =
         Random().nextInt(endInclusive - start) +  start
 
-private val CLIENT_ID = "c1fbf1a9074543cfbc84eb7c8515413c"
-private val REDIRECT_URI = "simplespotify://callback"
-private val REQUEST_CODE = (0..Int.MAX_VALUE).random()
+private const val CLIENT_ID = "c1fbf1a9074543cfbc84eb7c8515413c"
+private const val REDIRECT_URI = "simplespotify://callback"
+private val requestCode = (0..Int.MAX_VALUE).random()
 
 class MainActivity : Activity(), Player.NotificationCallback, ConnectionStateCallback {
 
@@ -41,14 +33,14 @@ class MainActivity : Activity(), Player.NotificationCallback, ConnectionStateCal
 
         authRequestBuilder.setScopes(arrayOf("user-read-private", "streaming"))
         val request = authRequestBuilder.build()
-        AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request)
+        AuthenticationClient.openLoginActivity(this, requestCode, request)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent) {
         super.onActivityResult(requestCode, resultCode, intent)
 
         // Check if result comes from the correct activity
-        if (requestCode == REQUEST_CODE) {
+        if (requestCode == com.mueru.simplespotify.requestCode) {
             val response = AuthenticationClient.getResponse(resultCode, intent)
             if (response.type == AuthenticationResponse.Type.TOKEN) {
                 val playerConfig = Config(this, response.accessToken, CLIENT_ID)
@@ -99,6 +91,6 @@ class MainActivity : Activity(), Player.NotificationCallback, ConnectionStateCal
     }
 
     override fun onTemporaryError() {
-        Log.d("MainActivity", "Temporary error occurred");
+        Log.d("MainActivity", "Temporary error occurred")
     }
 }
